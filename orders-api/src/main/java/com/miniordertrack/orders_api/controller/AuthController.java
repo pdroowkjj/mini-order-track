@@ -1,9 +1,10 @@
 package com.miniordertrack.orders_api.controller;
 
 import com.miniordertrack.orders_api.domain.User;
+import com.miniordertrack.orders_api.dto.AuthResponseDTO;
 import com.miniordertrack.orders_api.dto.LoginDTO;
 import com.miniordertrack.orders_api.dto.RegisterDTO;
-import com.miniordertrack.orders_api.dto.TokenResponseDTO;
+import com.miniordertrack.orders_api.dto.UserDTO;
 import com.miniordertrack.orders_api.repository.UserRepository;
 import com.miniordertrack.orders_api.security.JwtService;
 
@@ -35,11 +36,13 @@ public class AuthController {
         }
 
         String encryptedPassword = passwordEncoder.encode(dto.getPassword());
-
         User newUser = new User(dto.getName(), dto.getEmail(), encryptedPassword);
-        userRepository.save(newUser);
+        User savedUser = userRepository.save(newUser);
 
-        return ResponseEntity.status(HttpStatus.CREATED).body("Usuário cadastrado com sucesso!");
+        String token = jwtService.generateToken(savedUser.getEmail());
+        UserDTO userDTO = new UserDTO(savedUser.getId(), savedUser.getName(), savedUser.getEmail());
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(new AuthResponseDTO(token, userDTO));
     }
 
     @PostMapping("/login")
@@ -56,7 +59,8 @@ public class AuthController {
         }
 
         String token = jwtService.generateToken(user.getEmail());
+        UserDTO userDTO = new UserDTO(user.getId(), user.getName(), user.getEmail());
 
-        return ResponseEntity.ok(new TokenResponseDTO(token));
+        return ResponseEntity.ok(new AuthResponseDTO(token, userDTO));
     }
 }

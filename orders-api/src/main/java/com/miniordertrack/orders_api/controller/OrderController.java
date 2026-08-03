@@ -10,12 +10,14 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/orders")
+@RequestMapping("/api/orders")
 public class OrderController {
     private final OrderRepository orderRepository;
 
@@ -26,7 +28,8 @@ public class OrderController {
 
     @PostMapping
     public ResponseEntity<OrderResponseDTO> createOrder(@Valid @RequestBody CreateOrderDTO dto) {
-        Order newOrder = new Order(dto.getCustomerName(), dto.getDeliveryAddress(), dto.getItems());
+        String items = dto.getItems().stream().collect(Collectors.joining(", "));
+        Order newOrder = new Order(dto.getCustomerName(), dto.getDeliveryAddress(), items);
         Order savedOrder = orderRepository.save(newOrder);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(new OrderResponseDTO(savedOrder));
@@ -49,19 +52,22 @@ public class OrderController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @PatchMapping("/{id}/status")
+    @PutMapping("/{id}")
     public ResponseEntity<OrderResponseDTO> updateOrderStatus(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateOrderDTO dto) {
 
         return orderRepository.findById(id)
                 .map(order -> {
-                    // Aceita qualquer OrderStatus aqui, sem checar se a transição é válida
-                    // (ver observação em OrderStatus).
                     order.setStatus(dto.getStatus());
                     Order updateOrder = orderRepository.save(order);
                     return ResponseEntity.ok(new OrderResponseDTO(updateOrder));
                 })
                 .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<Void> handleInvalidId() {
+        return ResponseEntity.notFound().build();
     }
 }

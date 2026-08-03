@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { api } from '../services/api'
-import { AxiosError, AxiosResponse } from 'axios'
+import { AxiosError } from 'axios'
+import type { AxiosResponse } from 'axios'
 
 interface UseApiOptions {
   onError?: (error: AxiosError) => void

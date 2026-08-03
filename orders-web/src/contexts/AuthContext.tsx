@@ -1,53 +1,78 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
 import { storage } from '../utils/storage'
 import { api } from '../services/api'
 
-interface User {
+export interface User {
   id: string
   email: string
   name: string
+}
+
+interface LoginRequest {
+  email: string
+  password: string
+}
+
+interface RegisterRequest {
+  name: string
+  email: string
+  password: string
 }
 
 interface AuthContextType {
   user: User | null
   isAuthenticated: boolean
   isLoading: boolean
+  login: (credentials: LoginRequest) => Promise<void>
+  register: (data: RegisterRequest) => Promise<void>
   logout: () => void
-  setUser: (user: User | null) => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [user, setUser] = useState<User | null>(() => {
+    const token = storage.getToken()
+    const storedUser = storage.getUser()
+    return token && storedUser ? storedUser : null
+  })
 
   useEffect(() => {
-    const initAuth = async () => {
-      const token = storage.getToken()
-
-      if (token) {
-        try {
-          const { data } = await api.get('/api/auth/me')
-          setUser(data)
-        } catch {
-          storage.removeToken()
-        }
-      }
-
-      setIsLoading(false)
+    const handleLogout = () => {
+      setUser(null)
     }
 
-    initAuth()
+    window.addEventListener('auth-logout', handleLogout)
+    return () => window.removeEventListener('auth-logout', handleLogout)
   }, [])
+
+  const login = async (credentials: LoginRequest) => {
+    const response = await api.post<{ token: string; user: User }>('auth/login', credentials)
+    const { token, user: userData } = response.data
+
+    storage.setToken(token)
+    storage.setUser(userData)
+    setUser(userData)
+  }
+
+  const register = async (data: RegisterRequest) => {
+    const response = await api.post<{ token: string; user: User }>('auth/register', data)
+    const { token, user: userData } = response.data
+
+    storage.setToken(token)
+    storage.setUser(userData)
+    setUser(userData)
+  }
 
   const logout = () => {
     storage.removeToken()
+    storage.removeUser()
     setUser(null)
   }
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: Boolean(user), isLoading, logout, setUser }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: Boolean(user), isLoading: false, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   )

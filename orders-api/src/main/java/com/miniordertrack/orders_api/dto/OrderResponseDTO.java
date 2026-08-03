@@ -1,7 +1,7 @@
 package com.miniordertrack.orders_api.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.miniordertrack.orders_api.domain.Order;
-import com.miniordertrack.orders_api.domain.OrderStatus;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -9,10 +9,11 @@ import java.util.UUID;
 public class OrderResponseDTO {
 
     private UUID id;
+    @JsonProperty("clientName")
     private String customerName;
     private String deliveryAddress;
     private String items;
-    private OrderStatus status;
+    private String status;
     private LocalDateTime createdAt;
 
     public OrderResponseDTO() {
@@ -23,7 +24,7 @@ public class OrderResponseDTO {
         this.customerName = order.getCustomerName();
         this.deliveryAddress = order.getDeliveryAddress();
         this.items = order.getItems();
-        this.status = order.getStatus();
+        this.status = order.getStatus().name();
         this.createdAt = order.getCreatedAt();
     }
 
@@ -31,7 +32,7 @@ public class OrderResponseDTO {
         return id;
     }
 
-    public String getCustomerName() {
+    public String getClientName() {
         return customerName;
     }
 
@@ -43,7 +44,7 @@ public class OrderResponseDTO {
         return items;
     }
 
-    public OrderStatus getStatus() {
+    public String getStatus() {
         return status;
     }
 

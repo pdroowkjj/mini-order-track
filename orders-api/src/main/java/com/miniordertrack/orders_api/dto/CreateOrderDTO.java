@@ -1,21 +1,26 @@
 package com.miniordertrack.orders_api.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+
+import java.util.List;
 
 public class CreateOrderDTO {
     @NotBlank(message = "O nome do cliente é obrigatório")
+    @JsonAlias("clientName")
     private String customerName;
 
     @NotBlank(message = "O endereço de entrega é obrigatório")
     private String deliveryAddress;
 
-    @NotBlank(message = "Os itens do pedido são obrigatórios")
-    private String items;
+    @NotEmpty(message = "Os itens do pedido são obrigatórios")
+    private List<@NotBlank(message = "O nome do item não pode ser vazio") String> items;
 
     public CreateOrderDTO() {
     }
 
-    public CreateOrderDTO(String customerName, String deliveryAddress, String items) {
+    public CreateOrderDTO(String customerName, String deliveryAddress, List<String> items) {
         this.customerName = customerName;
         this.deliveryAddress = deliveryAddress;
         this.items = items;
@@ -37,11 +42,11 @@ public class CreateOrderDTO {
         this.deliveryAddress = deliveryAddress;
     }
 
-    public String getItems() {
+    public List<String> getItems() {
         return items;
     }
 
-    public void setItems(String items) {
+    public void setItems(List<String> items) {
         this.items = items;
     }
 }

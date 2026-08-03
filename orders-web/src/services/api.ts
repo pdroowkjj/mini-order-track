@@ -1,4 +1,5 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
+import axios, { AxiosError } from 'axios'
+import type { InternalAxiosRequestConfig } from 'axios'
 import { storage } from '../utils/storage'
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
@@ -10,7 +11,6 @@ export const api = axios.create({
   },
 })
 
-// Store listeners to prevent circular callbacks during refresh.
 let isRefreshing = false
 const refreshSubscribers: ((token: string) => void)[] = []
 
@@ -21,6 +21,12 @@ const subscribeTokenRefresh = (callback: (token: string) => void) => {
 const notifyTokenRefresh = (token: string) => {
   refreshSubscribers.forEach(callback => callback(token))
   refreshSubscribers.length = 0
+}
+
+const clearAuth = () => {
+  storage.removeToken()
+  storage.removeUser()
+  window.dispatchEvent(new Event('auth-logout'))
 }
 
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
@@ -38,11 +44,13 @@ api.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean }
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && !originalRequest._retry && originalRequest.url !== '/auth/login') {
       if (isRefreshing) {
         return new Promise((resolve) => {
           subscribeTokenRefresh((newToken: string) => {
-            originalRequest.headers.Authorization = `Bearer ${newToken}`
+            if (originalRequest.headers) {
+              originalRequest.headers.Authorization = `Bearer ${newToken}`
+            }
             resolve(api(originalRequest))
           })
         })
@@ -52,7 +60,7 @@ api.interceptors.response.use(
       originalRequest._retry = true
 
       try {
-        const { data } = await axios.post(`${BASE_URL}/api/auth/refresh`, {}, {
+        const { data } = await axios.post(`${BASE_URL}/auth/refresh`, {}, {
           headers: {
             Authorization: `Bearer ${storage.getToken()}`,
           },
@@ -61,22 +69,22 @@ api.interceptors.response.use(
         const newToken = data.token
         storage.setToken(newToken)
 
-        originalRequest.headers.Authorization = `Bearer ${newToken}`
+        if (originalRequest.headers) {
+          originalRequest.headers.Authorization = `Bearer ${newToken}`
+        }
         notifyTokenRefresh(newToken)
         isRefreshing = false
 
         return api(originalRequest)
       } catch {
-        storage.removeToken()
-        window.location.href = '/login'
+        clearAuth()
         isRefreshing = false
         return Promise.reject(error)
       }
     }
 
     if (error.response?.status === 403) {
-      storage.removeToken()
-      window.location.href = '/login'
+      clearAuth()
     }
 
     return Promise.reject(error)
