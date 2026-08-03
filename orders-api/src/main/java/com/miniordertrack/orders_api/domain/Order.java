@@ -8,9 +8,14 @@ import java.util.UUID;
 @Table(name = "tb_orders")
 public class Order {
     @Id
-    @Column(columnDefinition = "VARCHAR(36")
+    @Column(columnDefinition = "VARCHAR(36)")
     private UUID id;
 
+    // customerName, deliveryAddress, and items are intentionally denormalized in
+    // this simplified project.
+    // In a production system, Customer and Address would be
+    // separate entities/tables, and items would likely reside in an OrderItem table
+    // associated with a Product catalog.
     @Column(nullable = false)
     private String customerName;
 
